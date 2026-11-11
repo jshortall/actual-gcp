@@ -8,14 +8,15 @@ variable "container_host_network_tags" {
   description = "List of network tags to add for firewall rules"
 }
 
-variable "duckdns_subdomains" {
+variable "actual_image" {
   type        = string
-  description = "Comma-delimited list of DuckDNS subdomains"
+  description = "Container image for the Actual sync server (built from your fork by its fork-image workflow)"
+  default     = "ghcr.io/jshortall/actual-server:latest"
 }
 
-variable "duckdns_token" {
+variable "cloudflare_api_token" {
   type        = string
-  description = "Authentication token for DuckDNS"
+  description = "Cloudflare API token with Zone > DNS > Edit on the zone that holds actual_fqdn. Used on the VM to keep the A record pointed at its (ephemeral) public IP."
   sensitive   = true
 }
 

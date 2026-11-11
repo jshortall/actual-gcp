@@ -4,18 +4,20 @@ locals {
     ${yamlencode({
   write_files = [
     {
-      path        = "/etc/systemd/system/duckdns.service"
+      path        = "/etc/systemd/system/cloudflare-ddns.service"
       permissions = "0644"
       owner       = "root"
       content     = <<-EOT1
                 [Unit]
-                Description=Start DuckDNS
+                Description=Keep the Cloudflare DNS record for ${var.actual_fqdn} pointed at this VM
 
                 [Service]
-                ExecStart=/usr/bin/docker run --rm -e SUBDOMAINS=${var.duckdns_subdomains} -e TOKEN=${var.duckdns_token} --name=duckdns lscr.io/linuxserver/duckdns:latest
-
-                ExecStop=/usr/bin/docker stop duckdns
-                ExecStopPost=/usr/bin/docker rm duckdns
+                ExecStartPre=-/usr/bin/docker pull favonia/cloudflare-ddns:latest
+                ExecStart=/usr/bin/docker run --rm --user 1000:1000 --read-only --cap-drop all --security-opt no-new-privileges -e CLOUDFLARE_API_TOKEN=${var.cloudflare_api_token} -e DOMAINS=${var.actual_fqdn} -e PROXIED=false -e IP6_PROVIDER=none --name=cloudflare-ddns favonia/cloudflare-ddns:latest
+                ExecStop=/usr/bin/docker stop cloudflare-ddns
+                ExecStopPost=-/usr/bin/docker rm cloudflare-ddns
+                Restart=always
+                RestartSec=30
                 EOT1
     },
     {
@@ -29,7 +31,9 @@ locals {
               [Service]
               ExecStart=/usr/bin/docker run --rm --network custom-bridge -p 80:80 -p 443:443 --mount 'type=bind,source=/mnt/disks/data/caddy/Caddyfile,target=/etc/caddy/Caddyfile,readonly' --mount 'type=bind,source=/mnt/disks/data/caddy/data,target=/data' --mount 'type=bind,source=/mnt/disks/data/caddy/config,target=/config' --name=caddy caddy:alpine
               ExecStop=/usr/bin/docker stop caddy
-              ExecStopPost=/usr/bin/docker rm caddy
+              ExecStopPost=-/usr/bin/docker rm caddy
+              Restart=always
+              RestartSec=10
               EOT2
     },
     {
@@ -41,9 +45,12 @@ locals {
                 Description=Start Actual
 
                 [Service]
-                ExecStart=/usr/bin/docker run --rm --network custom-bridge --mount 'type=bind,source=/mnt/disks/data/actual-data,target=/data' --name=actual_server actualbudget/actual-server:latest
+                ExecStartPre=-/usr/bin/docker pull ${var.actual_image}
+                ExecStart=/usr/bin/docker run --rm --network custom-bridge --mount 'type=bind,source=/mnt/disks/data/actual-data,target=/data' --name=actual_server ${var.actual_image}
                 ExecStop=/usr/bin/docker stop actual_server
-                ExecStopPost=/usr/bin/docker rm actual_server
+                ExecStopPost=-/usr/bin/docker rm actual_server
+                Restart=always
+                RestartSec=10
                 EOT3
     },
     {
@@ -86,7 +93,7 @@ locals {
     "systemctl daemon-reload",
     "systemctl start caddy.service",
     "systemctl start actual.service",
-    "systemctl start duckdns.service"
+    "systemctl start cloudflare-ddns.service"
   ]
 
   bootcmd = [

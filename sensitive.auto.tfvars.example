@@ -1,0 +1,9 @@
+# Copy to sensitive.auto.tfvars (gitignored) and fill in.
+actual_fqdn              = "budget.example.com"
+cloudflare_api_token     = "..." # Zone > DNS > Edit, limited to example.com
+gcp_project_name         = "my-actual-project"
+gcp_billing_project_name = "my-actual-project"
+billing_account_name     = "My Billing Account" # gcloud billing accounts list
+gcp_region               = "us-central1"
+gcp_zone                 = "us-central1-c"
+user                     = "your_google_username"

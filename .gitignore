@@ -1,3 +1,8 @@
 *.auto.tfvars
 .DS_Store
 .terraform/
+# Local Terraform state (contains secrets such as the Cloudflare token)
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log

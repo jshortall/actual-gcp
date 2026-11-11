@@ -1,12 +1,6 @@
 terraform {
-  cloud {
-
-    organization = "your-organization"
-
-    workspaces {
-      name = "your-workspace"
-    }
-  }
+  # State is kept in a local file (terraform.tfstate, gitignored) instead of
+  # HCP Terraform. It contains secrets: don't commit it.
 
   required_providers {
     google = {
