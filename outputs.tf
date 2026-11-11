@@ -6,3 +6,7 @@ output "ip" {
 output "actual_url" {
   value = "https://${var.actual_fqdn}"
 }
+
+output "backup_bucket" {
+  value = google_storage_bucket.backups.name
+}

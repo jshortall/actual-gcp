@@ -6,3 +6,8 @@ billing_account_name     = "My Billing Account" # gcloud billing accounts list
 gcp_region               = "us-central1"
 gcp_zone                 = "us-central1-c"
 user                     = "your_google_username"
+
+# Google sign-in: Google Auth Platform -> Clients -> Web application,
+# authorized redirect URI https://budget.example.com/openid/callback
+google_oauth_client_id     = "....apps.googleusercontent.com"
+google_oauth_client_secret = "GOCSPX-..."

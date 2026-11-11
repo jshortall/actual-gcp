@@ -14,6 +14,29 @@ variable "actual_image" {
   default     = "ghcr.io/jshortall/actual-server:latest"
 }
 
+variable "google_oauth_client_id" {
+  type        = string
+  description = "OAuth 2.0 client ID (Web application) for Google sign-in. Authorized redirect URI: https://<actual_fqdn>/openid/callback"
+}
+
+variable "google_oauth_client_secret" {
+  type        = string
+  description = "OAuth 2.0 client secret for Google sign-in"
+  sensitive   = true
+}
+
+variable "session_lifetime_seconds" {
+  type        = number
+  description = "How long a sign-in lasts before Google sign-in is needed again (Actual reads ACTUAL_TOKEN_EXPIRATION as seconds for OpenID logins)"
+  default     = 2592000 # 30 days
+}
+
+variable "backup_retention_days" {
+  type        = number
+  description = "Days to keep nightly backups in the bucket"
+  default     = 30
+}
+
 variable "public_key_path" {
   type    = string
   default = "~/.ssh/id_gcp_ed25519.pub"
