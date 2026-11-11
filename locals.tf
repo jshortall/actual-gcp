@@ -4,23 +4,6 @@ locals {
     ${yamlencode({
   write_files = [
     {
-      path        = "/etc/systemd/system/cloudflare-ddns.service"
-      permissions = "0644"
-      owner       = "root"
-      content     = <<-EOT1
-                [Unit]
-                Description=Keep the Cloudflare DNS record for ${var.actual_fqdn} pointed at this VM
-
-                [Service]
-                ExecStartPre=-/usr/bin/docker pull favonia/cloudflare-ddns:latest
-                ExecStart=/usr/bin/docker run --rm --user 1000:1000 --read-only --cap-drop all --security-opt no-new-privileges -e CLOUDFLARE_API_TOKEN=${var.cloudflare_api_token} -e DOMAINS=${var.actual_fqdn} -e PROXIED=false -e IP6_PROVIDER=none --name=cloudflare-ddns favonia/cloudflare-ddns:latest
-                ExecStop=/usr/bin/docker stop cloudflare-ddns
-                ExecStopPost=-/usr/bin/docker rm cloudflare-ddns
-                Restart=always
-                RestartSec=30
-                EOT1
-    },
-    {
       path        = "/etc/systemd/system/caddy.service"
       permissions = "0644"
       owner       = "root"
@@ -92,8 +75,7 @@ locals {
     "docker network create custom-bridge",
     "systemctl daemon-reload",
     "systemctl start caddy.service",
-    "systemctl start actual.service",
-    "systemctl start cloudflare-ddns.service"
+    "systemctl start actual.service"
   ]
 
   bootcmd = [

@@ -41,6 +41,22 @@ resource "google_compute_disk" "container_host_data_disk" {
   depends_on = [google_project_service.project]
 }
 
+# Reserved so the IP survives VM rebuilds and stop/start: the Cloudflare A record
+# for actual_fqdn is set by hand to this address (`terraform output ip`).
+# In-use external IPv4 costs about $0.005/hour whether static or ephemeral.
+resource "google_compute_address" "container_host" {
+  name         = "container-host-ip"
+  region       = var.gcp_region
+  address_type = "EXTERNAL"
+  network_tier = "STANDARD"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [google_project_service.project]
+}
+
 resource "google_compute_instance" "container_host" {
   name                      = "containerhost01"
   machine_type              = var.vm_size
@@ -61,7 +77,7 @@ resource "google_compute_instance" "container_host" {
     subnetwork = google_compute_subnetwork.vpc_subnet.name
 
     access_config {
-      // Ephemeral public IP
+      nat_ip       = google_compute_address.container_host.address
       network_tier = "STANDARD"
     }
   }

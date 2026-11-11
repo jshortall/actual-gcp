@@ -14,12 +14,6 @@ variable "actual_image" {
   default     = "ghcr.io/jshortall/actual-server:latest"
 }
 
-variable "cloudflare_api_token" {
-  type        = string
-  description = "Cloudflare API token with Zone > DNS > Edit on the zone that holds actual_fqdn. Used on the VM to keep the A record pointed at its (ephemeral) public IP."
-  sensitive   = true
-}
-
 variable "public_key_path" {
   type    = string
   default = "~/.ssh/id_gcp_ed25519.pub"

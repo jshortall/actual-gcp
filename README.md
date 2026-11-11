@@ -2,7 +2,7 @@
 
 > **This fork** differs from upstream (eatonc/actual-gcp) in three ways. Where the steps below talk about DuckDNS or HCP Terraform, use this instead:
 >
-> * **Your own domain on Cloudflare instead of DuckDNS.** A `cloudflare-ddns` container ([favonia/cloudflare-ddns](https://github.com/favonia/cloudflare-ddns)) on the VM keeps the A record for `actual_fqdn` pointed at the VM's ephemeral public IP. The record is DNS-only (grey cloud), so Caddy gets its own Let's Encrypt certificate. Create a Cloudflare API token (My Profile → API Tokens → "Edit zone DNS" template, limited to your zone) and set `cloudflare_api_token`. You don't need to create the DNS record by hand. Skip steps 1–3 and 10 below, and ignore the `duckdns_*` variables.
+> * **Your own domain with a static IP, instead of DuckDNS.** Terraform reserves a static external IPv4 (`container-host-ip`, with `prevent_destroy`) and attaches it to the VM, so the address survives VM rebuilds, stop/start and Container-Optimized OS updates. After `terraform apply`, run `terraform output ip` and create a DNS **A** record for `actual_fqdn` pointing to it. On Cloudflare, use **DNS only** (grey cloud) so Caddy can get its own Let's Encrypt certificate. Skip steps 1–3 and 10 below, and ignore the `duckdns_*` variables. Cost: an in-use external IPv4 is about $0.005/hour (around $3.65/month), static or ephemeral; the free tier covers only 1 hour of it a month. The VM and disks stay free. (An IPv6-only setup would avoid that cost, but Actual's bank sync needs outgoing IPv4.)
 > * **Local Terraform state.** There's no `cloud {}` block, so `terraform.tfstate` lives in this folder. It's gitignored and contains secrets, so don't commit it. If you lose it, `terraform import` the resources back. The data disk has `prevent_destroy` regardless.
 > * **The app image comes from a fork of Actual.** `actual_image` defaults to `ghcr.io/jshortall/actual-server:latest`, which the `fork-image` workflow in [jshortall/actual](https://github.com/jshortall/actual) builds on every push to `master`. The `actual` service pulls the image every time it starts, so after a new build, `sudo systemctl restart actual` on the VM updates it.
 >
@@ -108,17 +108,17 @@ Some notes about the architecture of this setup:
         * `gcloud compute instances list`
         * `gcloud compute instances describe containerhost01`
     * **Note** - If you login to your DuckDNS account, you should see the IP address for your subdomain has been updated with the public IP address of your virtual machine.
-    * Click the SSH button in the Google Cloud console. Once connected, run `docker ps -a`. We should see three containers running:
+    * Click the SSH button in the Google Cloud console. Once connected, run `docker ps -a`. We should see two containers running (`actual_server` and `caddy`):
         * ![Docker processes](./readme_resources/docker_ps.png)
         * If the Google Cloud SSH proxy isn't working, temporarily update the "container_host_network_tags" variable in `terraform.tfvars` and re-run `terraform apply` to add the "allow-ssh" tag, which will allow SSH from your local machine. I recommend removing that network tag and re-running `terraform apply` when finished to disable direct SSH access again.
-    * If the three containers aren't running, you can inspect their associated systemctl services using the following commands:
+    * If the containers aren't running, you can inspect their associated systemctl services using the following commands:
         * `systemctl status actual`
         * `systemctl status caddy`
-        * `systemctl status cloudflare-ddns`
+        * `journalctl -u actual -n 50`
     * If the containers are running, but things aren't working as-expected, use the following commands to inspect the container logs to further troubleshoot:
         * `docker logs actual_server`
         * `docker logs caddy`
-        * `docker logs cloudflare-ddns`
+        * `docker logs actual_server --tail 50`
     * Run the following command to ensure the applications' "data" directory has been mounted onto the Persistent Disk (/dev/sdb):
         * ![lsblk output](./readme_resources/lsblk_output.png)
         * **Important** This part of the configuration is critical to application data persisting across virtual machine reboots.
@@ -199,8 +199,8 @@ Substitute your own project ID, old zone, and new zone throughout.
     * If instead the plan wants to *replace* the data disk, stop. That means the `ignore_changes = [snapshot]` lifecycle rule on `google_compute_disk.container_host_data_disk` is missing from your copy of `compute.tf`. A disk restored from a snapshot reports that snapshot back to Terraform, and since the resource never sets `snapshot` itself — an argument that forces replacement — Terraform would otherwise plan to destroy the disk your restore just recovered. `prevent_destroy` will catch this and abort the plan, so your data is safe either way, but the migration cannot proceed until the lifecycle rule is in place.
 7. Run `terraform apply`.
 8. Verify before cleaning up. SSH in and confirm the data disk is mounted and the containers are healthy:
-    * `lsblk` should show `sdb` mounted at `/mnt/disks/data`, and `docker ps` should list `actual_server`, `caddy`, and `cloudflare-ddns`.
-    * The VM's public IP changes with the move. The `cloudflare-ddns` container updates the Cloudflare record on boot, so DNS follows on its own within a minute or two — no manual DNS change is needed.
+    * `lsblk` should show `sdb` mounted at `/mnt/disks/data`, and `docker ps` should list `actual_server` and `caddy`.
+    * With this fork's static IP, the public IP stays the same after a zone move within the same region (static IPs are regional), so no DNS change is needed.
     * Load your Actual Budget URL and confirm your budget data is intact.
 9. Once you're satisfied, delete the old disk, and the snapshot if you no longer want it:
     * `gcloud compute disks delete container-host-data-disk --zone=your_old_zone`
